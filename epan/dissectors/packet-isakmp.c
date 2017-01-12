@@ -567,6 +567,12 @@ static const fragment_items isakmp_frag_items = {
 #define PLOAD_IKE_NAT_D13               130
 #define PLOAD_IKE_NAT_OA14              131
 #define PLOAD_IKE_CISCO_FRAG            132
+
+// Quantum-safe Key Exchange
+#define PLOAD_QSKE                      192
+
+
+
 /*
 * IPSEC Situation Definition (RFC2407)
 */
@@ -670,7 +676,10 @@ static const range_string payload_type[] = {
   { PLOAD_IKE_NAT_D13,PLOAD_IKE_NAT_D13, "NAT-D (draft-ietf-ipsec-nat-t-ike-01 to 03)"},
   { PLOAD_IKE_NAT_OA14,PLOAD_IKE_NAT_OA14, "NAT-OA (draft-ietf-ipsec-nat-t-ike-01 to 03)"},
   { PLOAD_IKE_CISCO_FRAG,PLOAD_IKE_CISCO_FRAG, "Cisco-Fragmentation"},
-  { 133,256,    "Private Use"   },
+  // QSKE
+  { 133,PLOAD_QSKE-1,    "Private Use"   },
+  { PLOAD_QSKE,PLOAD_QSKE, "Key Exchange (Quantum-Safe)"   },
+  { PLOAD_QSKE+1,256,    "Private Use"   },
   { 0,0,        NULL },
   };
 
@@ -1019,6 +1028,16 @@ static const value_string dh_group[] = {
   { 28, "256-bit Brainpool ECP group" },
   { 29, "384-bit Brainpool ECP group" },
   { 30, "512-bit Brainpool ECP group" },
+    
+    // QSKE : The below values come from https://github.com/strongswan/strongswan/blob/master/src/libstrongswan/crypto/diffie_hellman.h
+    { 31,   "CURVE_25519" },
+    { 32,   "CURVE_448" },
+    { 1024, "MODP_NULL" },
+    { 1030, "NTRU_112_BIT" },
+    { 1031, "NTRU_128_BIT" },
+    { 1032, "NTRU_192_BIT" },
+    { 1033, "NTRU_256_BIT" },
+    { 1040, "128-bit New Hope group" },
   { 0,  NULL }
 };
 
@@ -3038,7 +3057,12 @@ dissect_payloads(tvbuff_t *tvb, proto_tree *tree,
               /* N.B. not passing in length as must be the last payload in the message */
               dissect_ikev2_fragmentation(tvb, offset + 4, ntree, pinfo, message_id, next_payload, is_request, decr_data );
             }
-            break;
+                break;
+                
+            case PLOAD_QSKE:
+                dissect_key_exch(tvb, offset + 4, payload_length - 4, ntree, isakmp_version, pinfo, decr_data );
+                break;
+                
           default:
             proto_tree_add_item(ntree, hf_isakmp_datapayload, tvb, offset + 4, payload_length-4, ENC_NA);
             break;
